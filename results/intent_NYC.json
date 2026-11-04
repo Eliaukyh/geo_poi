@@ -1,0 +1,10 @@
+{
+  "n": 200,
+  "baseline_hit": 0.76,
+  "best_per_intent": 40,
+  "best_union": 160,
+  "llm_calls": 200,
+  "prompt_tokens": 64474,
+  "cost_usd": 0.02110290000000001,
+  "cached": false
+}
