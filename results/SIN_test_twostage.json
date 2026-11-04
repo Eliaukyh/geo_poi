@@ -1,0 +1,41 @@
+{
+  "city": "SIN",
+  "split": "test",
+  "n": 632,
+  "results": {
+    "retrieval_only": {
+      "n": 632,
+      "HR@1": 0.5569620253164557,
+      "Recall@1": 0.5569620253164557,
+      "Accuracy@1": 0.5569620253164557,
+      "HR@5": 0.7436708860759493,
+      "Recall@5": 0.7436708860759493,
+      "Accuracy@5": 0.7436708860759493,
+      "HR@10": 0.8037974683544303,
+      "Recall@10": 0.8037974683544303,
+      "Accuracy@10": 0.8037974683544303,
+      "NDCG@1": 0.5569620253164557,
+      "NDCG@5": 0.6561283695800338,
+      "NDCG@10": 0.6754212990456292,
+      "MAP@1": 0.5569620253164557,
+      "MAP@5": 0.627030590717299,
+      "MAP@10": 0.6349017982720508,
+      "geo_err_km": 1.4468883805524302,
+      "jump_rate": 0.0,
+      "cat_hour_violation_rate": 0.03322784810126582,
+      "invalid_ids_per_sample": 0.0,
+      "dup_per_sample": 0.0,
+      "candidate_recall": 0.8037974683544303,
+      "calls_per_sample": 0.0,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "latency_s_per_sample": 0.0,
+      "cost_usd_total": 0.0,
+      "cost_usd_per_sample": 0.0,
+      "verified_rate": 0.0,
+      "wall_s": 1.06,
+      "mode": "retrieval_only",
+      "model": "-"
+    }
+  }
+}

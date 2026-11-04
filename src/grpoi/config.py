@@ -57,7 +57,11 @@ class RetrievalConfig:
         }
     )
     n_candidates: int = 25       # candidates handed to the LLM
-    fusion: str = "rrf"          # rrf | minmax | softmax | union
+    fusion: str = "two_stage"    # two_stage | rrf | minmax | softmax | union
+    k_graph: int = 8             # slots reserved for the strong channel in two_stage
+    #: drop the POI the user is currently at. Off by default: classical baselines
+    #: do not exclude it and "stay where you are" is a legitimate next POI.
+    exclude_last: bool = False
 
 
 @dataclass

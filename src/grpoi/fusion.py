@@ -90,7 +90,44 @@ def union(route_lists, weights, k=60):
     return [(p, 0.0) for p in out]
 
 
-STRATEGIES = {"rrf": rrf, "minmax": minmax, "softmax": softmax, "union": union}
+#: auxiliary route weights used by two_stage (tuned on validation, not the RRF weights)
+AUX_WEIGHTS = {"memory": 1.0, "geo": 0.5, "semantic": 0.5}
+
+
+def two_stage(route_lists, weights, k_graph=8, top=10):
+    """Graph-first ordering with auxiliary routes used only to fill the tail.
+
+    The strong channel decides the head (positions 1..k_graph); the remaining
+    slots are filled by the best auxiliary candidates that the strong channel
+    never saw.  This keeps the strong channel's precision while recovering the
+    reachability that the union provides.
+    """
+    g = _minmax(route_lists.get("graph", []))
+    aux = {}
+    for route in ("memory", "geo", "semantic"):
+        w = AUX_WEIGHTS.get(route, 1.0)
+        if w <= 0:
+            continue
+        for poi, v in _minmax(route_lists.get(route, [])).items():
+            aux[poi] = aux.get(poi, 0.0) + w * v
+
+    head = sorted(g, key=lambda p: -g[p])[:k_graph]
+    tail_aux = sorted((p for p in aux if p not in head), key=lambda p: -aux[p])
+    tail_g = sorted((p for p in g if p not in head), key=lambda p: -g[p])
+
+    out = list(head)
+    for p in tail_aux:
+        if len(out) >= top:
+            break
+        out.append(p)
+    for p in tail_g:
+        if len(out) >= top:
+            break
+        out.append(p)
+    return [(p, 1.0 / (i + 1)) for i, p in enumerate(out)]
+
+
+STRATEGIES = {"rrf": rrf, "minmax": minmax, "softmax": softmax, "union": union, "two_stage": two_stage}
 
 
 def fuse(strategy: str, route_lists, weights, **kw):
@@ -99,4 +136,6 @@ def fuse(strategy: str, route_lists, weights, **kw):
         return fn(route_lists, weights, k=kw.get("rrf_k", 60))
     if strategy == "softmax":
         return fn(route_lists, weights, temp=kw.get("temp", 0.5))
+    if strategy == "two_stage":
+        return fn(route_lists, weights, k_graph=kw.get("k_graph", 8))
     return fn(route_lists, weights)

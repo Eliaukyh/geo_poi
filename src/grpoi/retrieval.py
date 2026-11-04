@@ -233,8 +233,9 @@ class RetrievalEngine:
                         if c.poi == p:
                             c.ranks[route] = rank
                             break
-        # never propose the POI the user is standing at right now
-        fused = [c for c in fused if c.poi != sample.last_poi][: self.cfg.n_candidates]
+        if getattr(self.cfg, "exclude_last", False):
+            fused = [c for c in fused if c.poi != sample.last_poi]
+        fused = fused[: self.cfg.n_candidates]
         self._annotate(sample, fused)
         return fused
 
