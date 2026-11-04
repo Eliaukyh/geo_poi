@@ -217,9 +217,22 @@ class RetrievalEngine:
             "memory": self.memory.retrieve(sample, cfg.memory_top_k),
         }
 
-    def candidates(self, sample: Sample) -> list[Candidate]:
+    def candidates(self, sample: Sample, strategy: str | None = None) -> list[Candidate]:
+        from . import fusion as _fusion
+
         routes = self.route_lists(sample)
-        fused = _rrf_fuse(routes, self.cfg.weights, self.cfg.rrf_k)
+        strategy = strategy or getattr(self.cfg, "fusion", "rrf")
+        if strategy == "rrf":
+            fused = _rrf_fuse(routes, self.cfg.weights, self.cfg.rrf_k)
+        else:
+            ranked = _fusion.fuse(strategy, routes, self.cfg.weights)
+            fused = [Candidate(poi=p, score=v) for p, v in ranked]
+            for route, lst in routes.items():
+                for rank, (p, _) in enumerate(lst[: self.cfg.n_candidates], start=1):
+                    for c in fused:
+                        if c.poi == p:
+                            c.ranks[route] = rank
+                            break
         # never propose the POI the user is standing at right now
         fused = [c for c in fused if c.poi != sample.last_poi][: self.cfg.n_candidates]
         self._annotate(sample, fused)

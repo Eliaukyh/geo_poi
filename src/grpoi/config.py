@@ -57,6 +57,7 @@ class RetrievalConfig:
         }
     )
     n_candidates: int = 25       # candidates handed to the LLM
+    fusion: str = "rrf"          # rrf | minmax | softmax | union
 
 
 @dataclass
