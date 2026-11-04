@@ -1,0 +1,41 @@
+{
+  "city": "PHO",
+  "split": "test",
+  "n": 39,
+  "results": {
+    "retrieval_only": {
+      "n": 39,
+      "HR@1": 0.2564102564102564,
+      "Recall@1": 0.2564102564102564,
+      "Accuracy@1": 0.2564102564102564,
+      "HR@5": 0.7435897435897436,
+      "Recall@5": 0.7435897435897436,
+      "Accuracy@5": 0.7435897435897436,
+      "HR@10": 0.8461538461538461,
+      "Recall@10": 0.8461538461538461,
+      "Accuracy@10": 0.8461538461538461,
+      "NDCG@1": 0.2564102564102564,
+      "NDCG@5": 0.5128350672677068,
+      "NDCG@10": 0.5462351138693788,
+      "MAP@1": 0.2564102564102564,
+      "MAP@5": 0.435897435897436,
+      "MAP@10": 0.4497863247863249,
+      "geo_err_km": 2.678949857209711,
+      "jump_rate": 0.0,
+      "cat_hour_violation_rate": 0.0,
+      "invalid_ids_per_sample": 0.0,
+      "dup_per_sample": 0.0,
+      "candidate_recall": 0.9487179487179487,
+      "calls_per_sample": 0.0,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "latency_s_per_sample": 0.0,
+      "cost_usd_total": 0.0,
+      "cost_usd_per_sample": 0.0,
+      "verified_rate": 0.0,
+      "wall_s": 0.05,
+      "mode": "retrieval_only",
+      "model": "-"
+    }
+  }
+}

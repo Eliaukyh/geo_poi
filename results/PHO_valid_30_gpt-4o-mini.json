@@ -1,0 +1,31 @@
+{
+  "city": "PHO",
+  "split": "valid",
+  "n": 30,
+  "results": {
+    "retrieval_only": {
+      "n": 30,
+      "HR@5": 0.6333333333333333,
+      "HR@10": 0.7666666666666667,
+      "NDCG@5": 0.45298181009916977,
+      "NDCG@10": 0.4965163231955387,
+      "MRR": 0.41207671957671954,
+      "geo_err_km": 2.1106688407230845,
+      "jump_rate": 0.0,
+      "cat_hour_violation_rate": 0.0,
+      "invalid_ids_per_sample": 0.0,
+      "dup_per_sample": 0.0,
+      "candidate_recall": 0.9,
+      "calls_per_sample": 0.0,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "latency_s_per_sample": 0.0,
+      "cost_usd_total": 0.0,
+      "cost_usd_per_sample": 0.0,
+      "verified_rate": 0.0,
+      "wall_s": 0.04,
+      "mode": "retrieval_only",
+      "model": "-"
+    }
+  }
+}

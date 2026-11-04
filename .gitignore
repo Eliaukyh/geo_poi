@@ -1,0 +1,17 @@
+# environment
+.venv/
+__pycache__/
+*.py[cod]
+.python-version
+
+# regenerable experiment artefacts
+results/dump/
+*.pkl
+*.parquet
+
+# secrets
+.env
+.tools/
+
+# os
+.DS_Store

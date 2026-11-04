@@ -1,0 +1,41 @@
+{
+  "city": "NYC",
+  "split": "test",
+  "n": 600,
+  "results": {
+    "ours": {
+      "n": 600,
+      "HR@1": 0.45166666666666666,
+      "Recall@1": 0.45166666666666666,
+      "Accuracy@1": 0.45166666666666666,
+      "HR@5": 0.7016666666666667,
+      "Recall@5": 0.7016666666666667,
+      "Accuracy@5": 0.7016666666666667,
+      "HR@10": 0.7766666666666666,
+      "Recall@10": 0.7766666666666666,
+      "Accuracy@10": 0.7766666666666666,
+      "NDCG@1": 0.45166666666666666,
+      "NDCG@5": 0.5843831659527976,
+      "NDCG@10": 0.6092157083810685,
+      "MAP@1": 0.45166666666666666,
+      "MAP@5": 0.5454166666666663,
+      "MAP@10": 0.5560079365079361,
+      "geo_err_km": 2.098281306947008,
+      "jump_rate": 0.0,
+      "cat_hour_violation_rate": 0.01,
+      "invalid_ids_per_sample": 1.025,
+      "dup_per_sample": 0.0,
+      "candidate_recall": 0.8266666666666667,
+      "calls_per_sample": 1.465,
+      "prompt_tokens": 1259961,
+      "completion_tokens": 65562,
+      "latency_s_per_sample": 6.689221256176631,
+      "cost_usd_total": 0.22833134999999977,
+      "cost_usd_per_sample": 0.00038055224999999964,
+      "verified_rate": 0.465,
+      "wall_s": 340.57,
+      "mode": "ours",
+      "model": "gpt-4o-mini"
+    }
+  }
+}
