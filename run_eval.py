@@ -40,6 +40,7 @@ MODES = {
     "ours": "multi-route retrieval + tools + adaptive verification",
     "no_agent": "multi-route retrieval + tools, single LLM pass",
     "no_geo": "ablation: geo route removed from fusion",
+    "gen": "generative: LLM writes the POIs from evidence, then validity repair (policy B)",
     "free": "baseline: free-form LLM, no retrieval (RALLM-POI w/o RAG)",
     "rag_free": "baseline: RALLM-POI style TF-IDF RAG, free-form output",
     "retrieval_only": "diagnostic: fusion ranking without any LLM call",
@@ -60,6 +61,10 @@ def build_runner(mode: str, city, client: LLMClient | None, alpha: float | None 
         return AdaptiveAgent(city, client=client, enable_agent=False, alpha=alpha)
     if mode == "no_geo":
         return AdaptiveAgent(city, client=client, use_geo=False, alpha=alpha)
+    if mode == "gen":
+        from grpoi.generative import GenerativeAgent
+
+        return GenerativeAgent(city, client=client)
     if mode == "free":
         return FreeFormAgent(city, client=client, use_rag=False)
     if mode == "rag_free":

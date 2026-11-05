@@ -1,0 +1,41 @@
+{
+  "city": "PHO",
+  "split": "test",
+  "n": 39,
+  "results": {
+    "gen": {
+      "n": 39,
+      "HR@1": 0.28205128205128205,
+      "Recall@1": 0.28205128205128205,
+      "Accuracy@1": 0.28205128205128205,
+      "HR@5": 0.5897435897435898,
+      "Recall@5": 0.5897435897435898,
+      "Accuracy@5": 0.5897435897435898,
+      "HR@10": 0.6923076923076923,
+      "Recall@10": 0.6923076923076923,
+      "Accuracy@10": 0.6923076923076923,
+      "NDCG@1": 0.28205128205128205,
+      "NDCG@5": 0.44826265547921706,
+      "NDCG@10": 0.4795709779293024,
+      "MAP@1": 0.28205128205128205,
+      "MAP@5": 0.40128205128205124,
+      "MAP@10": 0.4131054131054131,
+      "geo_err_km": 1.944556386704695,
+      "jump_rate": 0.0,
+      "cat_hour_violation_rate": 0.05128205128205128,
+      "invalid_ids_per_sample": 0.0,
+      "dup_per_sample": 0.0,
+      "candidate_recall": 0.8717948717948718,
+      "calls_per_sample": 1.0,
+      "prompt_tokens": 24468,
+      "completion_tokens": 2516,
+      "latency_s_per_sample": 2.3730245981460962,
+      "cost_usd_total": 0.0051798,
+      "cost_usd_per_sample": 0.00013281538461538462,
+      "verified_rate": 0.0,
+      "wall_s": 14.04,
+      "mode": "gen",
+      "model": "gpt-4o-mini"
+    }
+  }
+}
