@@ -73,9 +73,12 @@ def evidence_block(city: CityData, sample: Sample, engine: RetrievalEngine) -> s
     return "\n".join(parts)
 
 
-def generation_prompt(city: CityData, sample: Sample, engine: RetrievalEngine) -> str:
+def generation_prompt(city: CityData, sample: Sample, engine: RetrievalEngine,
+                      profile_text: str | None = None) -> str:
     hist = city.user_hist.get(sample.user, [])
-    if hist:
+    if profile_text:
+        profile = profile_text
+    elif hist:
         c = Counter(city.poi_cat(p) for p, _, _ in hist)
         top = ", ".join(f"{city.cat_name(k)} ({v / len(hist):.0%})" for k, v in c.most_common(2))
         profile = f"This user has {len(hist)} historical check-ins; dominant categories: {top}."
@@ -130,7 +133,7 @@ class GenerativeAgent:
         return out[:k], invalid, padded
 
     # -------------------------------------------------------------- main entry
-    def run(self, sample: Sample, target: int | None = None):
+    def run(self, sample: Sample, target: int | None = None, profile_text: str | None = None):
         from .agent import Prediction
 
         pred = Prediction()
@@ -138,7 +141,9 @@ class GenerativeAgent:
         pred.fusion_order = [c.poi for c in cands]
         pred.candidate_recall = bool(target is not None and target in pred.fusion_order)
 
-        data, usage = self.client.chat_json(SYSTEM, generation_prompt(self.city, sample, self.engine))
+        data, usage = self.client.chat_json(
+            SYSTEM, generation_prompt(self.city, sample, self.engine, profile_text)
+        )
         pred.usage.add(usage)
         data = data or {}
         pred.reason = str(data.get("reason", ""))
