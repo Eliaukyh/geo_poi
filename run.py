@@ -148,6 +148,7 @@ def main():
     ap.add_argument("--out", default="")
     ap.add_argument("--no-profile", action="store_true", help="disable the LLM user profile")
     ap.add_argument("--no-tta", action="store_true", help="single view only (equivalent to plain generation)")
+    ap.add_argument("--agent-loop", action="store_true", help="Judge->Fixer loop on rule violations")
     args = ap.parse_args()
 
     city = load_city(args.city)
@@ -190,18 +191,28 @@ def main():
         agg = borda(lists) if len(lists) > 1 else (lists[0] if lists else [])
         fill = [c.poi for c in engine.candidates(s)]
         final, invalid = repair(agg, fill, city.n_pois())
-        return i, final, invalid
+        n_calls = len(lists)
+        if args.agent_loop:
+            from grpoi.agent_loop import AgentLoop
+
+            loop = AgentLoop(city, client)
+            out = loop.run(s, final, fill)
+            final = repair(out.ranking, fill, city.n_pois())[0]
+            n_calls += out.calls
+        return i, final, invalid, n_calls
 
     preds = [None] * len(samples)
     inv = 0
+    extra_calls = 0
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=args.workers) as ex:
         futs = {ex.submit(one, i): i for i, s in enumerate(samples)}
         done = 0
         for f in as_completed(futs):
-            i, r, bad = f.result()
+            i, r, bad, nc = f.result()
             preds[i] = r
             inv += bad
+            extra_calls += nc
             done += 1
             if done % 100 == 0:
                 print(f"  {done}/{len(samples)} ({done / (time.time() - t0):.1f}/s)", flush=True)
@@ -224,7 +235,17 @@ def main():
         paired(hit_vec(samples, preds), hit_vec(samples, g0), "HR@10")
         paired(ndcg_vec(samples, preds), ndcg_vec(samples, g0), "NDCG@10")
 
-    print(f"\n非法 ID 总数 {inv} | 调用 {client.usage.calls} | 成本 ${client.usage.cost_usd:.4f}")
+    jump = cath = 0
+    for s, r in zip(samples, preds):
+        if not r:
+            continue
+        from grpoi.agent_loop import objective_issues
+
+        kinds = {i.kind for i in objective_issues(city, s, r)}
+        jump += "jump" in kinds
+        cath += "cat_hour" in kinds
+    print(f"\n非法 ID {inv} | 违规样本: 距离跳变 {jump} / 类别-时段 {cath} | "
+          f"调用 {client.usage.calls} | 成本 ${client.usage.cost_usd:.4f}")
     out = Path(args.out) if args.out else ROOT / "results" / f"final_{args.city}_{args.split}_{args.n}.json"
     out.write_text(json.dumps({
         "n": len(samples), "final": m, "single": metrics(samples, g0) if g0 else None,
