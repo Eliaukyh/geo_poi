@@ -40,41 +40,47 @@ def _fmt_pois(city: CityData, pois, scores=None, limit=8, with_dist=None) -> str
     return "; ".join(out) if out else "none"
 
 
-def evidence_block(city: CityData, sample: Sample, engine: RetrievalEngine) -> str:
+def evidence_block(city: CityData, sample: Sample, engine: RetrievalEngine, per_view: int = 8,
+                   drop: tuple[str, ...] = ()) -> str:
     """Render retrieval output as facts, not as a menu to pick from."""
     routes = engine.route_lists(sample)
     last = sample.last_poi
     hour = sample.last_hour
 
     succ = city.transitions.get(int(last), {})
-    succ_top = [p for p, _ in Counter(succ).most_common(8)]
+    succ_top = [p for p, _ in Counter(succ).most_common(per_view)]
 
     hist = city.user_hist.get(sample.user, [])
     ucount = Counter(p for p, _, _ in hist)
-    u_top = [p for p, _ in ucount.most_common(8)]
+    u_top = [p for p, _ in ucount.most_common(per_view)]
 
     geo = routes.get("geo", [])
     from .data import haversine_vec
     import numpy as np
     dist = haversine_vec(city.coords[last], city.coords) if 0 <= last < city.n_pois() else None
 
-    sem = routes.get("semantic", [])[:8]
+    sem = routes.get("semantic", [])[:per_view]
 
     parts = []
-    parts.append(f"- After POI {last}, people most often went to: "
-                 f"{_fmt_pois(city, succ_top, with_dist=dist)}")
-    if u_top:
-        parts.append(f"- This user has visited most often: {_fmt_pois(city, u_top)}")
-    else:
-        parts.append("- This user has no recorded history (cold start).")
-    parts.append(f"- Near the current location: {_fmt_pois(city, [p for p, _ in geo], with_dist=dist)}")
-    parts.append(f"- Users with similar recent trajectories next visited: "
-                 f"{_fmt_pois(city, [p for p, _ in sem], with_dist=dist)}")
-    return "\n".join(parts)
+    if "transition" not in drop:
+        parts.append(f"- After POI {last}, people most often went to: "
+                     f"{_fmt_pois(city, succ_top, with_dist=dist, limit=per_view)}")
+    if "memory" not in drop:
+        if u_top:
+            parts.append(f"- This user has visited most often: {_fmt_pois(city, u_top, limit=per_view)}")
+        else:
+            parts.append("- This user has no recorded history (cold start).")
+    if "geo" not in drop:
+        parts.append(f"- Near the current location: {_fmt_pois(city, [p for p, _ in geo], with_dist=dist, limit=per_view)}")
+    if "semantic" not in drop:
+        parts.append(f"- Users with similar recent trajectories next visited: "
+                     f"{_fmt_pois(city, [p for p, _ in sem], with_dist=dist, limit=per_view)}")
+    return "\n".join(parts) if parts else "- (no evidence available)"
 
 
 def generation_prompt(city: CityData, sample: Sample, engine: RetrievalEngine,
-                      profile_text: str | None = None) -> str:
+                      profile_text: str | None = None, per_view: int = 8,
+                      drop: tuple[str, ...] = ()) -> str:
     hist = city.user_hist.get(sample.user, [])
     if profile_text:
         profile = profile_text
@@ -92,7 +98,7 @@ Current hour of day: {sample.last_hour}:00
 {profile}
 
 Reference evidence retrieved from historical check-ins (use it as a hint; you may also rely on your own knowledge of this city):
-{evidence_block(city, sample, engine)}
+{evidence_block(city, sample, engine, per_view, drop)}
 
 Instructions:
 1. Recommend exactly 10 distinct POI ids, most likely first.

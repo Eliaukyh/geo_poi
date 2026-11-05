@@ -38,8 +38,9 @@ PERSONA = (
 )
 
 
-def build_prompt(variant: str, city, sample, engine, profile_text: str) -> str:
-    lines = evidence_block(city, sample, engine).split("\n")
+def build_prompt(variant: str, city, sample, engine, profile_text: str, per_view: int = 8,
+                 drop: tuple[str, ...] = ()) -> str:
+    lines = evidence_block(city, sample, engine, per_view, drop).split("\n")
     header = ""
     if variant == "B" and len(lines) >= 4:
         lines = [lines[1], lines[2], lines[3], lines[0]]
@@ -126,7 +127,7 @@ def paired(a, b, label):
 def metrics(samples, rankings):
     n = len(samples)
     h = {k: 0 for k in (1, 5, 10)}
-    nd = 0.0
+    nd = {k: 0.0 for k in (5, 10)}
     for s, r in zip(samples, rankings):
         r = (r or [])[:10]
         if s.target in r:
@@ -134,8 +135,12 @@ def metrics(samples, rankings):
             for k in h:
                 if p <= k:
                     h[k] += 1
-            nd += 1.0 / math.log2(p + 1)
-    return {f"HR@{k}": h[k] / n for k in h} | {"NDCG@10": nd / n}
+            for k in nd:
+                if p <= k:
+                    nd[k] += 1.0 / math.log2(p + 1)
+    out = {f"HR@{k}": h[k] / n for k in h}
+    out |= {f"NDCG@{k}": nd[k] / n for k in nd}
+    return out
 
 
 def main():
@@ -148,6 +153,10 @@ def main():
     ap.add_argument("--out", default="")
     ap.add_argument("--no-profile", action="store_true", help="disable the LLM user profile")
     ap.add_argument("--no-tta", action="store_true", help="single view only (equivalent to plain generation)")
+    ap.add_argument("--drop", default="geo", help="comma list: transition,memory,geo,semantic (default: geo)")
+    ap.add_argument("--with-geo", action="store_true", help="re-enable the spatial evidence line")
+    ap.add_argument("--variants", default="ABC")
+    ap.add_argument("--per-view", type=int, default=8, help="evidence items per view")
     ap.add_argument("--agent-loop", action="store_true", help="Judge->Fixer loop on rule violations")
     args = ap.parse_args()
 
@@ -179,14 +188,19 @@ def main():
         store.save()
 
     # ---- 3-variant generation ----
-    variants = ("A",) if args.no_tta else ("A", "B", "C")
+    variants = tuple(args.variants) if args.variants else ("A",)
+    if args.no_tta:
+        variants = ("A",)
+    drop = tuple(x.strip() for x in args.drop.split(",") if x.strip())
+    if args.with_geo:
+        drop = tuple(d for d in drop if d != "geo")
 
     def one(i):
         s = samples[i]
         prof = render_profile(store, s.user) if not args.no_profile else None
         lists = []
         for v in variants:
-            d, _ = client.chat_json(SYSTEM, build_prompt(v, city, s, engine, prof), temperature=0.0)
+            d, _ = client.chat_json(SYSTEM, build_prompt(v, city, s, engine, prof, args.per_view, drop), temperature=0.0)
             lists.append(parse_ids(d))
         agg = borda(lists) if len(lists) > 1 else (lists[0] if lists else [])
         fill = [c.poi for c in engine.candidates(s)]
