@@ -54,7 +54,7 @@ class LLMClient:
         self.usage = Usage()
         self._lock = threading.Lock()  # usage accumulation is shared across workers
 
-    def chat_json(self, system: str, user: str) -> tuple[dict | None, Usage]:
+    def chat_json(self, system: str, user: str, temperature: float | None = None) -> tuple[dict | None, Usage]:
         """One JSON-mode completion with retries. Returns (parsed, usage_of_this_call)."""
         if not config.client_kwargs()["api_key"]:
             raise RuntimeError("DMX_API_KEY is not set (see .tools/.env)")
@@ -71,7 +71,7 @@ class LLMClient:
                             {"role": "system", "content": system},
                             {"role": "user", "content": user},
                         ],
-                        temperature=self.cfg.temperature,
+                        temperature=self.cfg.temperature if temperature is None else temperature,
                         max_tokens=self.cfg.max_tokens,
                         response_format={"type": "json_object"},
                     )
@@ -84,7 +84,7 @@ class LLMClient:
                             {"role": "system", "content": system},
                             {"role": "user", "content": user},
                         ],
-                        temperature=self.cfg.temperature,
+                        temperature=self.cfg.temperature if temperature is None else temperature,
                         max_tokens=self.cfg.max_tokens,
                     )
                 u.latency_s = time.time() - t0
