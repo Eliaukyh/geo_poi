@@ -1,110 +1,136 @@
 # geo-rag-poi
 
-**多视图证据 + 用户画像 + 视角增强的零样本下一 POI 推荐**
-（training-free · evidence-grounded generation · prompt-level TTA）
+**零样本下一 POI 推荐：多尺度证据（MMEG）+ 推理时共识增强（SICA）**
 
-不训练任何参数：检索四类证据 → LLM 自由生成 POI → Borda 聚合 → 只做合法性修复。
+不训练任何参数。把可计算的统计规律显式化为自然语言证据，让 LLM 只做"在事实上判断"；
+再用三种视角各生成一次，Borda 聚合，最后做合法性修复。
 
-> 完整方法与实验见 **[PAPER_ZH.md](PAPER_ZH.md)**，
-> 方法细节（公式、提示词、算法）见 **[METHOD_ZH.md](METHOD_ZH.md)**。
+---
 
-## 主结果（test 全量，gpt-4o-mini，3 次调用/样本）
+## 方法
+
+```
+离线统计（每城一次）
+  转移计数 / 用户访问分布 / POI 坐标与类别 / TF-IDF 索引
+        │
+        ▼  MMEG：多尺度移动证据基座
+  群体级  转移视图   "从 l_n 出发人群常去哪"（POI 级 + 时段条件 + 二阶）→ 附转移次数
+  个体级  个体视图   "该用户常去哪"（访问频次 × 类别-时段先验）        → 附访问次数
+  个体级  用户画像   LLM 把长历史压成"回访倾向 + 作息"（按用户缓存）
+  查询级  空间视图   "附近有什么"（距离衰减 + 行进方向）               → 附公里数
+  查询级  语义视图   "相似轨迹的下一站"（TF-IDF 检索）                 → 附公里数
+        │
+        ▼  证据块 E：四行事实文本
+        ▼  SICA：结构化推理时共识增强
+  变体 A 默认顺序 ┐
+  变体 B 证据倒序 ├─ LLM（温度 0，各生成 10 个 POI）→ Borda 聚合
+  变体 C 居民视角 ┘
+        │
+        ▼
+  合法性校验（ID 必须存在）→ 去重 → 证据回退补位 → top-10
+```
+
+LLM 只出现在两处：画像生成（每用户一次）与 SICA 的三次生成。其余全是确定性计算。
+
+---
+
+## 结果（test 全量，gpt-4o-mini）
 
 `HR@10 / NDCG@10`：
 
 | 方法 | PHO (39) | NYC (600) | SIN (632) |
 |---|---|---|---|
 | RALLM-POI（论文值） | 0.684 / 0.399 | 0.419 / 0.213 | 0.440 / 0.264 |
-| **本方法（证据 + 画像 + TTA）** | **0.692 / 0.484** | **0.587 / 0.389** | **0.644 / 0.453** |
+| **本方法（MMEG + SICA）** | **0.692 / 0.484** | **0.587 / 0.389** | **0.644 / 0.453** |
 | 单次生成（消融基线） | 0.692 / 0.480 | 0.562 / 0.358 | 0.587 / 0.415 |
-| TemporalMarkov（零 LLM） | 0.795 / 0.669 | 0.775 / 0.659 | 0.758 / 0.655 |
+| TemporalMarkov（零 LLM，统计） | 0.795 / 0.669 | 0.775 / 0.659 | 0.758 / 0.655 |
 
-相对单次生成，NYC +2.5pt、SIN +5.7pt（配对 bootstrap 显著）。
-纯统计基线仍更高——这是自由生成的固有代价，见论文 §4。
+相对单次生成：NYC **+2.5pt**（95% CI [+0.3, +4.5]）、SIN **+5.7pt**（[+3.2, +8.2]），配对 bootstrap 显著。
+纯统计基线仍更高——这是自由生成的固有代价，属于方法的适用边界，不是实现问题。
 
 ## 消融（NYC/test 600）
 
 | 配置 | HR@10 | NDCG@10 |
 |---|---|---|
 | 单次生成 | 0.562 | 0.358 |
-| + LLM 用户画像 | 0.565 | 0.370 |
-| + 视角增强（TTA） | 0.588 | 0.387 |
-| + 两者 | 0.587 | 0.389 |
+| + 用户画像 | 0.565 | 0.370 |
+| + 视角增强（SICA） | 0.588 | 0.387 |
+| + 两者（最终） | 0.587 | 0.389 |
 
-画像在 TTA 之上没有叠加（0.587 vs 0.588），其单独贡献亦不显著。
+画像在 SICA 之上未叠加（0.587 vs 0.588），其单独贡献亦不显著（+0.3pt）。
 
-## 快速开始
+其他已验证的结论：
+
+| 尝试 | 结论 |
+|---|---|
+| 同提示词重复采样 ×3 | +0.8pt，不显著（错误相关） |
+| 异提示词 ×3 | +2.7pt，显著 |
+| 显式规划（硬/软提示、意图重排） | 无效或有害；模型自述意图与输出一致率 71%/97%（事后合理化） |
+| Oracle 意图（给定真实类别） | +14pt，说明信息存在但不可独立获得 |
+| 共访视图 / 区域视图 | 新增可达仅 +2~3pt / 无信号，未采用 |
+
+---
+
+## 安装与运行
 
 ```bash
 cd geo-rag-poi
-source ../.tools/uv-env.sh        # uv 缓存 / matplotlib 缓存目录
+source ../.tools/uv-env.sh      # uv 缓存与 matplotlib 缓存（沙箱环境需要）
 uv sync
 
-# 最终配置（画像 + TTA，3 次调用/样本）
-uv run python run_final.py --city NYC --n 600 --workers 12 \
-  --dump results/dump/NYC_test_gen_gen.jsonl
+# 完整方法（画像 + SICA）
+uv run python run.py --city NYC --n 600 --workers 12
 
-# 单次生成（消融基线）
-uv run python run_eval.py --city NYC --split test --n 600 --mode gen --workers 12
+# 关掉某个组件做快速对照
+uv run python run.py --city NYC --n 600 --no-profile
+uv run python run.py --city NYC --n 600 --no-tta        # 等价于单次生成
 ```
 
 API 凭据放在 `../.tools/.env`（`DMX_API_KEY` / `DMX_BASE_URL`），不随仓库分发。
 
-## 方法一句话
+### 分析脚本（`analysis/`）
 
-```
-① 证据：转移视图 + 个体视图 + 空间视图 + 语义视图（写成事实，带次数/距离）
-② 画像：LLM 把长历史压成"回访倾向 + 作息"（按用户缓存，一次调用）
-③ 生成：LLM 自由生成 10 个 POI（允许证据之外）
-④ 增强：三种视角提示各生成一次（默认 / 证据倒序 / 居民视角）
-⑤ 聚合与修复：Borda 计数 → 丢弃越界与重复 → 证据补位
-```
+| 脚本 | 用途 |
+|---|---|
+| `run_modes.py` | 多模式评测：`gen` / `free`（无证据）/ `retrieval_only`（零 LLM）/ `ours` |
+| `run_baselines.py` | 统计基线：POP / UPop / Markov1 / ItemKNN / GeoN / CatPop / TemporalMarkov |
+| `run_tta_ablation.py` | 同提示词采样 vs 异提示词视角增强（等算力对照） |
+| `run_profile_ablation.py` | 用户画像消融 |
+| `run_intent_ablation.py` | 意图干预消融（软提示） |
+| `compare_constrained.py` | 约束式选择（候选内排序）作为消融上界 |
+| `compare_rallm.py` | 用同一套指标复算 RALLM-POI 的预测文件 |
+
+---
 
 ## 目录
 
 ```
+run.py                 唯一入口：MMEG + 画像 + SICA + 聚合 + 修复
 src/grpoi/
-  generative.py   主方法：证据序列化 + 生成 + 修复
-  profile.py      LLM 用户画像（按用户缓存）
-  retrieval.py    四路证据来源（转移 / 个体 / 空间 / 语义）
-  data.py         离线统计（转移计数 / 用户画像 / 类别-时段先验 / 日号）
-  fusion.py       候选融合（仅用于修复补位与约束式消融）
-  agent.py        约束式选择变体（消融用）
-  baselines.py    无检索基线
-  classic_baselines.py  统计基线（POP / UPop / Markov / ItemKNN / GeoN）
-  metrics.py      指标（与 RALLM-POI 实现逐位对齐）
-  llm.py          客户端与成本核算
-
-run_final.py            最终配置：画像 + TTA + 聚合 + 修复
-run_eval.py             主评测入口（gen / ours / free / retrieval_only）
-run_prompt_ensemble.py  TTA 消融（同提示词 vs 异提示词）
-run_soft_hint_full.py   意图干预消融（软提示）
-run_profile_ablation.py 画像消融
-run_baselines.py        统计基线
-compare_rallm.py        用同一套指标复算 RALLM-POI 的预测文件
-compare_two_stage.py    约束式选择（消融上界）
-run_think2go_bench.py   跨基准评测（GNPR / Think2Go 划分）
+  config.py            路径、超参、API 配置
+  data.py              离线统计：转移计数 / 用户历史 / 类别-时段先验 / 日号
+  retrieval.py         四个证据视图（转移 / 个体 / 空间 / 语义）
+  profile.py           LLM 用户画像（按用户缓存）
+  generative.py        证据序列化 + 提示词 + 生成 + 修复
+  fusion.py            候选融合（仅用于修复补位与消融）
+  agent.py             约束式选择变体（消融用）
+  baselines.py         无检索基线
+  classic_baselines.py 统计基线
+  metrics.py           指标（与 RALLM-POI 实现逐位对齐）
+  llm.py               LLM 客户端与成本核算
+analysis/              分析脚本（见上表）
+results/               最终三城结果 + 单次基线 + 统计基线 + RALLM 复现
 ```
 
-## 文档
+---
 
-| 文件 | 内容 |
-|---|---|
-| [PAPER_ZH.md](PAPER_ZH.md) | 背景、缺陷论证、方法、全量结果、消融 |
-| [METHOD_ZH.md](METHOD_ZH.md) | 方法细节：四视图公式、提示词、算法、成本 |
-| [RELATED_RALLM_ZH.md](RELATED_RALLM_ZH.md) | RALLM-POI 与 RALLM-STAR 的做法与差异 |
-| [results/THINK2GO_BENCH.md](results/THINK2GO_BENCH.md) | 跨基准边界条件 |
+## 评测口径与说明
 
-## 结果文件
-
-`results/` 只保留论文引用到的结果：
-
-- `final_*.json`：最终配置三城结果
-- `*_test_gen.json`：单次生成（消融基线）
-- `*_test_classic.json`：统计基线
-- `*_test_twostage.json`：约束式选择（消融上界）
-- `prompt_ensemble_NYC_600.json`：TTA 消融
-- `soft_hint_NYC_600.json`：意图干预消融
-- `profile_NYC_600.json`：画像消融
-- `rallm_*.json`：RALLM-POI 的本地复现
-- `PHO_test_39.json`：含无证据基线（`free`）
+- 指标：HR@1/5/10、NDCG@5/10、MAP@10；单目标下 `HR@k ≡ Recall@k ≡ Accuracy@k`；
+- 指标实现与 RALLM-POI 的 `calc_recall / calc_ndcg / calc_map` 逐行对齐，
+  用其官方预测文件复算可逐位复现（PHO/valid）；
+- 训练/验证/测试沿用 RALLM-POI 的预处理划分。该划分**不是时间因果的**
+  （约 91% 的测试样本存在目标日之后的同用户训练签到），但我们验证过：
+  仅 2% 的样本依赖"未来"信息，且把个体视图限制到目标日之前的签到后，
+  覆盖率反而 +2.3pt（NYC）/ +2.2pt（SIN）——该属性未使结果虚高；
+- PHO 的 valid/test 仅 38/39 条，数值波动大，不作主结论依据。

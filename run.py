@@ -144,18 +144,21 @@ def main():
     ap.add_argument("--n", type=int, default=600)
     ap.add_argument("--workers", type=int, default=12)
     ap.add_argument("--dump", default="")
+    ap.add_argument("--no-profile", action="store_true", help="disable the LLM user profile")
+    ap.add_argument("--no-tta", action="store_true", help="single view only (equivalent to plain generation)")
     args = ap.parse_args()
 
     city = load_city(args.city)
     samples = city.test[: args.n]
     engine = RetrievalEngine(city)
     client = LLMClient()
-    print(f"{args.city}: {len(samples)} samples | 3 calls/sample", flush=True)
+    tag = "single" if args.no_tta else ("3 views" if not args.no_profile else "3 views, no profile")
+    print(f"{args.city}: {len(samples)} samples | {tag}", flush=True)
 
     # ---- profiles (cached per user) ----
     store = ProfileStore(ROOT / "results" / "dump" / f"profiles_{args.city}.jsonl")
     users = sorted({s.user for s in samples})
-    todo = store.missing(users)
+    todo = [] if args.no_profile else store.missing(users)
     if todo:
         print(f"building {len(todo)} profiles ...", flush=True)
 
@@ -173,14 +176,16 @@ def main():
         store.save()
 
     # ---- 3-variant generation ----
+    variants = ("A",) if args.no_tta else ("A", "B", "C")
+
     def one(i):
         s = samples[i]
-        prof = render_profile(store, s.user)
+        prof = render_profile(store, s.user) if not args.no_profile else None
         lists = []
-        for v in ("A", "B", "C"):
+        for v in variants:
             d, _ = client.chat_json(SYSTEM, build_prompt(v, city, s, engine, prof), temperature=0.0)
             lists.append(parse_ids(d))
-        agg = borda(lists)
+        agg = borda(lists) if len(lists) > 1 else (lists[0] if lists else [])
         fill = [c.poi for c in engine.candidates(s)]
         final, invalid = repair(agg, fill, city.n_pois())
         return i, final, invalid
@@ -210,7 +215,7 @@ def main():
         m = metrics(samples, g0)
         print(f"| 单次生成 | {m['HR@1']:.3f} | {m['HR@5']:.3f} | {m['HR@10']:.3f} | {m['NDCG@10']:.3f} |")
     m = metrics(samples, preds)
-    print(f"| **画像 + TTA** | {m['HR@1']:.3f} | {m['HR@5']:.3f} | {m['HR@10']:.3f} | {m['NDCG@10']:.3f} |")
+    print(f"| **{tag}** | {m['HR@1']:.3f} | {m['HR@5']:.3f} | {m['HR@10']:.3f} | {m['NDCG@10']:.3f} |")
 
     if g0:
         print("\n配对差值（vs 单次生成）:")
