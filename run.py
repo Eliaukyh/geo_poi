@@ -141,19 +141,21 @@ def metrics(samples, rankings):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--city", default="NYC")
+    ap.add_argument("--split", default="test", choices=["valid", "test"])
     ap.add_argument("--n", type=int, default=600)
     ap.add_argument("--workers", type=int, default=12)
     ap.add_argument("--dump", default="")
+    ap.add_argument("--out", default="")
     ap.add_argument("--no-profile", action="store_true", help="disable the LLM user profile")
     ap.add_argument("--no-tta", action="store_true", help="single view only (equivalent to plain generation)")
     args = ap.parse_args()
 
     city = load_city(args.city)
-    samples = city.test[: args.n]
+    samples = getattr(city, args.split)[: args.n]
     engine = RetrievalEngine(city)
     client = LLMClient()
     tag = "single" if args.no_tta else ("3 views" if not args.no_profile else "3 views, no profile")
-    print(f"{args.city}: {len(samples)} samples | {tag}", flush=True)
+    print(f"{args.city}/{args.split}: {len(samples)} samples | {tag}", flush=True)
 
     # ---- profiles (cached per user) ----
     store = ProfileStore(ROOT / "results" / "dump" / f"profiles_{args.city}.jsonl")
@@ -223,7 +225,7 @@ def main():
         paired(ndcg_vec(samples, preds), ndcg_vec(samples, g0), "NDCG@10")
 
     print(f"\n非法 ID 总数 {inv} | 调用 {client.usage.calls} | 成本 ${client.usage.cost_usd:.4f}")
-    out = ROOT / "results" / f"final_{args.city}_{args.n}.json"
+    out = Path(args.out) if args.out else ROOT / "results" / f"final_{args.city}_{args.split}_{args.n}.json"
     out.write_text(json.dumps({
         "n": len(samples), "final": m, "single": metrics(samples, g0) if g0 else None,
         "invalid_ids": inv, "calls": client.usage.calls, "cost_usd": client.usage.cost_usd,
