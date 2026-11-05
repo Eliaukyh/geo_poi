@@ -72,9 +72,13 @@ RALLM-POI 用 TF-IDF 检索轨迹、再用 DTW 重排；RALLM-STAR 把检索升�
 
 ## 2 方法
 
+方法由两个模块组成：**多尺度移动证据基座（Multi-Scale Mobility Evidence Grounding, MMEG）**
+与**结构化推理时共识增强（Structured Inference-Time Consensus Augmentation, SICA）**。
+本章给出设计要点，完整公式、提示词结构与算法见 [METHOD_ZH.md](METHOD_ZH.md)。
+
 方法由三段构成，分别对应第 1.4 节的诊断与第 1.5 节的三个发现。
 
-### 2.1 证据层：把检索结果变成事实
+### 2.1 MMEG：多尺度证据构造
 
 对给定轨迹 $S_u=\{(l_1,t_1),\dots,(l_n,t_n)\}$，从训练集统计四类证据：
 
@@ -101,7 +105,7 @@ $$
 - Users with similar recent trajectories next visited: 39 (Arts, 2.1km); ...
 ```
 
-### 2.2 生成与合法性修复
+### 2.2 SICA 的生成与有效性保障
 
 模型自由生成 10 个 POI ID（**不限定在证据内**），返回 `{"recommendation": [...], "reason": "..."}`。
 
@@ -110,7 +114,7 @@ $$
 
 这一步不改变"谁生成"的问题，只保证输出可被评测。实测非法率 0.0%–0.7%。
 
-### 2.3 多样性集成：用隐式规划替代显式规划
+### 2.3 SICA：视角扰动与共识聚合
 
 第 1.4 节的实验（见 §3.4）表明显式意图不可用，因此改为让**提示词本身携带不同视角**：
 
