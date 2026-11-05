@@ -30,6 +30,7 @@ class Sample:
     hours: list[int]
     target: int
     recent_len: int
+    days: list[int] = field(default_factory=list)   # absolute day index per check-in
 
     @property
     def history_pois(self) -> list[int]:
@@ -57,13 +58,14 @@ class Sample:
 
 
 def _parse(sample, city: str) -> Sample | None:
-    poi_seqs, cat_seqs, hour_seqs = [], [], []
+    poi_seqs, cat_seqs, hour_seqs, day_seqs = [], [], [], []
     for day in sample:
         if len(day) < 6:
             return None
         poi_seqs.append(np.asarray(day[0], dtype=np.int64))
         cat_seqs.append(np.asarray(day[1], dtype=np.int64))
         hour_seqs.append(np.asarray(day[3], dtype=np.int64))
+        day_seqs.append(np.asarray(day[5], dtype=np.int64))
     pois = np.concatenate(poi_seqs)
     cats = np.concatenate(cat_seqs)
     hours = np.concatenate(hour_seqs)
@@ -78,6 +80,7 @@ def _parse(sample, city: str) -> Sample | None:
         hours=hours.tolist(),
         target=int(pois[-1]),
         recent_len=len(poi_seqs[-1]) - 1,
+        days=np.concatenate(day_seqs).tolist(),
     )
 
 
