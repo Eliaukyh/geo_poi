@@ -246,6 +246,13 @@ def main():
         cath += "cat_hour" in kinds
     print(f"\n非法 ID {inv} | 违规样本: 距离跳变 {jump} / 类别-时段 {cath} | "
           f"调用 {client.usage.calls} | 成本 ${client.usage.cost_usd:.4f}")
+    # per-sample dump for paired analysis
+    dump_path = (Path(args.out).with_suffix(".jsonl") if args.out
+                 else ROOT / "results" / f"final_{args.city}_{args.split}_{args.n}.jsonl")
+    with open(dump_path, "w") as fh:
+        for s, r in zip(samples, preds):
+            fh.write(json.dumps({"target": int(s.target), "final": list(r or [])}) + "\n")
+
     out = Path(args.out) if args.out else ROOT / "results" / f"final_{args.city}_{args.split}_{args.n}.json"
     out.write_text(json.dumps({
         "n": len(samples), "final": m, "single": metrics(samples, g0) if g0 else None,

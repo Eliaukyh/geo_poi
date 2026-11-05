@@ -133,6 +133,7 @@ Replacement pool (choose only from here):
 {pool_txt}
 
 Repair rules:
+0. NEVER change the item at position 1; it is protected. If position 1 is flagged, leave it as is.
 1. Replace ONLY the items flagged above; keep all other items in their original positions.
 2. A replacement should satisfy: distance <= {MAX_DIST_KM:.0f} km, travel time <= {MAX_TRAVEL_MIN:.0f} min,
    hour-fit >= 0.02, and must not duplicate an item already in the list.
@@ -152,6 +153,7 @@ class AgentLoop:
 
     def run(self, sample: Sample, ranking: list[int], fill_pool: list[int]) -> LoopResult:
         state = list(dict.fromkeys(ranking))[:10]
+        anchor = state[0] if state else None
         res = LoopResult(ranking=state)
         res.issues_before = len(objective_issues(self.city, sample, state))
 
@@ -197,6 +199,10 @@ class AgentLoop:
             if not new_ids:
                 break
 
+            # hard protection: position 1 is never replaced
+            if anchor is not None:
+                new_ids = [anchor] + [x for x in new_ids if x != anchor]
+                new_ids = new_ids[:10]
             after = len(objective_issues(self.city, sample, new_ids))
             if after < len(before):
                 state = new_ids
