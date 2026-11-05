@@ -73,8 +73,10 @@ class AgentConfig:
     max_tokens: int = 900
     timeout: float = 90.0
     max_retries: int = 3
-    #: weight of the retrieval prior in the final blend (1.0 = pure retrieval)
-    llm_blend_alpha: float = 0.75
+    #: weight of the retrieval prior in the final blend.
+    #: Fixed at 0 by design: retrieval proposes the candidate set, the LLM decides
+    #: the order.  Other values are only used for the ablation in results/.
+    llm_blend_alpha: float = 0.0
     #: trigger the critique pass when the LLM self-reports confidence below this
     confidence_threshold: float = 0.55
     #: trigger when the LLM output fails validation (dupes/invalid ids)
