@@ -159,6 +159,7 @@ def main():
     ap.add_argument("--with-geo", action="store_true", help="re-enable the spatial evidence line")
     ap.add_argument("--variants", default="ABC")
     ap.add_argument("--per-view", type=int, default=8, help="evidence items per view")
+    ap.add_argument("--model", default="", help="override the LLM backbone")
     ap.add_argument("--no-retrieval", action="store_true", help="no evidence and no candidate pool (pure generation)")
     ap.add_argument("--care-keep", type=int, default=1, help="positions < keep trust the model; tail is rebuilt from evidence (10 = off)")
     ap.add_argument("--agent-loop", action="store_true", help="Judge->Fixer loop on rule violations")
@@ -168,6 +169,8 @@ def main():
     samples = getattr(city, args.split)[: args.n]
     engine = RetrievalEngine(city)
     client = LLMClient()
+    if args.model:
+        client.model = args.model
     tag = "single" if args.no_tta else ("3 views" if not args.no_profile else "3 views, no profile")
     print(f"{args.city}/{args.split}: {len(samples)} samples | {tag}", flush=True)
 

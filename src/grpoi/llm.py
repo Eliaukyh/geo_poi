@@ -65,8 +65,12 @@ class LLMClient:
             t0 = time.time()
             try:
                 try:
+                    _extra = {}
+                    if self.model.lower().startswith(("qwen3.5", "qwen3-")):
+                        _extra["extra_body"] = {"enable_thinking": False}
                     resp = self.client.chat.completions.create(
                         model=self.model,
+                        **_extra,
                         messages=[
                             {"role": "system", "content": system},
                             {"role": "user", "content": user},
