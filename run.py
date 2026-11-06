@@ -39,8 +39,8 @@ PERSONA = (
 
 
 def build_prompt(variant: str, city, sample, engine, profile_text: str, per_view: int = 8,
-                 drop: tuple[str, ...] = ()) -> str:
-    lines = evidence_block(city, sample, engine, per_view, drop).split("\n")
+                 drop: tuple[str, ...] = (), transition_evidence: str = "counts") -> str:
+    lines = evidence_block(city, sample, engine, per_view, drop, transition_evidence).split("\n")
     header = ""
     if variant == "B" and len(lines) >= 4:
         lines = [lines[1], lines[2], lines[3], lines[0]]
@@ -154,6 +154,7 @@ def main():
     ap.add_argument("--no-profile", action="store_true", help="disable the LLM user profile")
     ap.add_argument("--no-tta", action="store_true", help="single view only (equivalent to plain generation)")
     ap.add_argument("--drop", default="geo", help="comma list: transition,memory,geo,semantic (default: geo)")
+    ap.add_argument("--transition-evidence", default="counts", choices=["counts", "score"])
     ap.add_argument("--weights", default="", help="w1,w2,w3 for the transition mix")
     ap.add_argument("--with-geo", action="store_true", help="re-enable the spatial evidence line")
     ap.add_argument("--variants", default="ABC")
@@ -205,7 +206,7 @@ def main():
         prof = render_profile(store, s.user) if not args.no_profile else None
         lists = []
         for v in variants:
-            d, _ = client.chat_json(SYSTEM, build_prompt(v, city, s, engine, prof, args.per_view, drop), temperature=0.0)
+            d, _ = client.chat_json(SYSTEM, build_prompt(v, city, s, engine, prof, args.per_view, drop, args.transition_evidence), temperature=0.0)
             lists.append(parse_ids(d))
         agg = borda(lists) if len(lists) > 1 else (lists[0] if lists else [])
         fill = [c.poi for c in engine.candidates(s)]

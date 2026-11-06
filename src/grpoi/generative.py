@@ -41,14 +41,18 @@ def _fmt_pois(city: CityData, pois, scores=None, limit=8, with_dist=None) -> str
 
 
 def evidence_block(city: CityData, sample: Sample, engine: RetrievalEngine, per_view: int = 8,
-                   drop: tuple[str, ...] = ()) -> str:
+                   drop: tuple[str, ...] = (), transition_evidence: str = "counts") -> str:
     """Render retrieval output as facts, not as a menu to pick from."""
     routes = engine.route_lists(sample)
     last = sample.last_poi
     hour = sample.last_hour
 
     succ = city.transitions.get(int(last), {})
-    succ_top = [p for p, _ in Counter(succ).most_common(per_view)]
+    if transition_evidence == "score":
+        # hour-conditioned first-order + second-order mix (GraphRoute.WEIGHTS)
+        succ_top = [p for p, _ in routes.get("graph", [])[:per_view]]
+    else:
+        succ_top = [p for p, _ in Counter(succ).most_common(per_view)]
 
     hist = city.user_hist.get(sample.user, [])
     ucount = Counter(p for p, _, _ in hist)
@@ -80,7 +84,7 @@ def evidence_block(city: CityData, sample: Sample, engine: RetrievalEngine, per_
 
 def generation_prompt(city: CityData, sample: Sample, engine: RetrievalEngine,
                       profile_text: str | None = None, per_view: int = 8,
-                      drop: tuple[str, ...] = ()) -> str:
+                      drop: tuple[str, ...] = (), transition_evidence: str = "counts") -> str:
     hist = city.user_hist.get(sample.user, [])
     if profile_text:
         profile = profile_text
@@ -98,7 +102,7 @@ Current hour of day: {sample.last_hour}:00
 {profile}
 
 Reference evidence retrieved from historical check-ins (use it as a hint; you may also rely on your own knowledge of this city):
-{evidence_block(city, sample, engine, per_view, drop)}
+{evidence_block(city, sample, engine, per_view, drop, transition_evidence)}
 
 Instructions:
 1. Recommend exactly 10 distinct POI ids, most likely first.
