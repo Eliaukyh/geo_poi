@@ -55,6 +55,29 @@ def draw(xs, runs, xlabel, title, fname):
     plt.close(fig)
 
 
+def draw_compare(xs, runs_with, runs_without, xlabel, title, fname):
+    """Two panels: with CARE (tail calibrated) vs without CARE."""
+    fig, axes = plt.subplots(1, 2, figsize=(9.6, 3.6), sharey=True)
+    pos = list(range(len(xs)))
+    for ax, runs, sub in ((axes[0], runs_without, "without CARE"),
+                          (axes[1], runs_with, "with CARE (calibrated)")):
+        for i, m in enumerate(METRICS):
+            ys = [read(r)[i] for r in runs]
+            ax.plot(pos, ys, marker="o", lw=1.6, color=COLORS[i], label=m)
+            for x, y in zip(pos, ys):
+                ax.annotate(f"{y:.0f}", (x, y), textcoords="offset points",
+                            xytext=(0, 6), ha="center", fontsize=6)
+        ax.set_xticks(pos); ax.set_xticklabels(xs)
+        ax.set_xlabel(xlabel)
+        ax.set_title(sub, fontsize=9)
+    axes[0].set_ylabel("score (%)")
+    axes[1].legend(frameon=False, fontsize=7, ncol=2, loc="lower right")
+    fig.suptitle(title, y=1.02)
+    fig.tight_layout()
+    fig.savefig(OUT / fname, bbox_inches="tight")
+    plt.close(fig)
+
+
 if __name__ == "__main__":
     draw(["1:0", "1:1", "1:2", "1:3"],
          ["r_1_0", "r_1_1", "r_1_2", "r_1_3"],
@@ -65,5 +88,12 @@ if __name__ == "__main__":
          ["k_0", "k_2", "k_4", "r_1_2", "k_10", "k_12"],
          "evidence items per view (k)   ($w_1:w_3=1:2$)",
          "Evidence budget (NYC, n=200)", "fig_count.png")
+
+    draw_compare(["0", "2", "4", "8", "10", "12"],
+                 ["k_0", "k_2", "k_4", "r_1_2", "k_10", "k_12"],
+                 ["nc_k0", "nc_k2", "nc_k4", "nc_k8", "nc_k10", "nc_k12"],
+                 "evidence items per view (k)",
+                 "Effect of evidence budget, with vs without CARE (NYC, n=200)",
+                 "fig_count_compare.png")
 
     print("figures ->", OUT)
