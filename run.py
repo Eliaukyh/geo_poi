@@ -159,6 +159,7 @@ def main():
     ap.add_argument("--with-geo", action="store_true", help="re-enable the spatial evidence line")
     ap.add_argument("--variants", default="ABC")
     ap.add_argument("--per-view", type=int, default=8, help="evidence items per view")
+    ap.add_argument("--no-retrieval", action="store_true", help="no evidence and no candidate pool (pure generation)")
     ap.add_argument("--care-keep", type=int, default=1, help="positions < keep trust the model; tail is rebuilt from evidence (10 = off)")
     ap.add_argument("--agent-loop", action="store_true", help="Judge->Fixer loop on rule violations")
     args = ap.parse_args()
@@ -199,6 +200,9 @@ def main():
 
         GraphRoute.WEIGHTS = tuple(float(x) for x in args.weights.split(","))
     drop = tuple(x.strip() for x in args.drop.split(",") if x.strip())
+    if args.no_retrieval:
+        drop = ("transition", "memory", "geo", "semantic")
+        args.no_profile = True
     if args.with_geo:
         drop = tuple(d for d in drop if d != "geo")
 
@@ -210,7 +214,7 @@ def main():
             d, _ = client.chat_json(SYSTEM, build_prompt(v, city, s, engine, prof, args.per_view, drop, args.transition_evidence), temperature=0.0)
             lists.append(parse_ids(d))
         agg = borda(lists) if len(lists) > 1 else (lists[0] if lists else [])
-        fill = [c.poi for c in engine.candidates(s)]
+        fill = [] if args.no_retrieval else [c.poi for c in engine.candidates(s)]
         final, invalid = repair(agg, fill, city.n_pois())
         n_calls = len(lists)
         if args.agent_loop:
