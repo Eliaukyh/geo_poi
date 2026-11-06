@@ -154,6 +154,7 @@ def main():
     ap.add_argument("--no-profile", action="store_true", help="disable the LLM user profile")
     ap.add_argument("--no-tta", action="store_true", help="single view only (equivalent to plain generation)")
     ap.add_argument("--drop", default="geo", help="comma list: transition,memory,geo,semantic (default: geo)")
+    ap.add_argument("--weights", default="", help="w1,w2,w3 for the transition mix")
     ap.add_argument("--with-geo", action="store_true", help="re-enable the spatial evidence line")
     ap.add_argument("--variants", default="ABC")
     ap.add_argument("--per-view", type=int, default=8, help="evidence items per view")
@@ -191,6 +192,10 @@ def main():
     variants = tuple(args.variants) if args.variants else ("A",)
     if args.no_tta:
         variants = ("A",)
+    if args.weights:
+        from grpoi.retrieval import GraphRoute
+
+        GraphRoute.WEIGHTS = tuple(float(x) for x in args.weights.split(","))
     drop = tuple(x.strip() for x in args.drop.split(",") if x.strip())
     if args.with_geo:
         drop = tuple(d for d in drop if d != "geo")
