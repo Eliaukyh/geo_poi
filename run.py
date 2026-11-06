@@ -159,6 +159,7 @@ def main():
     ap.add_argument("--with-geo", action="store_true", help="re-enable the spatial evidence line")
     ap.add_argument("--variants", default="ABC")
     ap.add_argument("--per-view", type=int, default=8, help="evidence items per view")
+    ap.add_argument("--care-keep", type=int, default=1, help="positions < keep trust the model; tail is rebuilt from evidence (10 = off)")
     ap.add_argument("--agent-loop", action="store_true", help="Judge->Fixer loop on rule violations")
     args = ap.parse_args()
 
@@ -215,7 +216,7 @@ def main():
         if args.agent_loop:
             from grpoi.agent_loop import AgentLoop
 
-            loop = AgentLoop(city, client)
+            loop = AgentLoop(city, client, calibrate_keep=args.care_keep)
             out = loop.run(s, final, fill)
             final = repair(out.ranking, fill, city.n_pois())[0]
             n_calls += out.calls
