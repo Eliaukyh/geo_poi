@@ -65,6 +65,9 @@ def evidence_block(city: CityData, sample: Sample, engine: RetrievalEngine, per_
 
     sem = routes.get("semantic", [])[:per_view]
 
+    if per_view <= 0:
+        return "- (no evidence available)"
+
     parts = []
     if "transition" not in drop:
         parts.append(f"- After POI {last}, people most often went to: "
