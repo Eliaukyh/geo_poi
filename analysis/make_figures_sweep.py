@@ -79,15 +79,15 @@ def draw_compare(xs, runs_with, runs_without, xlabel, title, fname):
 
 
 if __name__ == "__main__":
-    draw(["1:0", "1:1", "1:2", "1:3"],
-         ["r_1_0", "r_1_1", "r_1_2", "r_1_3"],
-         "$w_1 : w_3$   ($w_2 = 0$, middle term removed)",
-         "Transition ratio (NYC, n=200)", "fig_ratio.png")
+    draw(["1:0", "1:1", "1:2", "1:3", "1:8", "1:20", "1:50"],
+         ["nc_r_1_0", "nc_r_1_1", "nc_k8", "nc_r_1_3", "nc_r_1_8", "nc_r_1_20", "nc_r_1_50"],
+         "$w_1 : w_3$   ($w_2 = 0$)",
+         "Transition ratio, CARE off (NYC, n=200)", "fig_ratio.png")
 
-    draw(["0", "2", "4", "8", "10", "12"],
-         ["k_0", "k_2", "k_4", "r_1_2", "k_10", "k_12"],
-         "evidence items per view (k)   ($w_1:w_3=1:2$)",
-         "Evidence budget (NYC, n=200)", "fig_count.png")
+    draw(["0", "2", "4", "8", "12", "16"],
+         ["nc_k0", "nc_k2", "nc_k4", "nc_k8", "nc_k12", "nc_k16"],
+         "evidence items per view (k)   ($w_1:w_3=1:2$, CARE off)",
+         "Evidence budget, CARE off (NYC, n=200)", "fig_count.png")
 
     draw_compare(["0", "2", "4", "8", "10", "12"],
                  ["k_0", "k_2", "k_4", "r_1_2", "k_10", "k_12"],
