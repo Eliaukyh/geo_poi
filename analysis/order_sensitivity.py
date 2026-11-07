@@ -93,29 +93,30 @@ def main():
     ap.add_argument("--n", type=int, default=200)
     ap.add_argument("--k", type=int, default=5, help="number of evidence orderings")
     ap.add_argument("--workers", type=int, default=50)
+    ap.add_argument("--model", default="", help="LLM backbone override")
+    ap.add_argument("--drop", default="geo", help="evidence lines to drop (default: geo)")
     args = ap.parse_args()
 
     city = load_city(args.city)
     samples = city.test[: args.n]
     engine = RetrievalEngine(city)
+    drop = tuple(x.strip() for x in args.drop.split(",") if x.strip())
     client = LLMClient()
+    if args.model:
+        client.model = args.model
     store = ProfileStore(ROOT / "results" / "dump" / f"profiles_{args.city}.jsonl")
     print(f"{args.city}: {len(samples)} samples x {args.k} orderings", flush=True)
 
-    # fixed set of orderings: identity, reverse, then seeded shuffles
-    base_order = [0, 1, 2, 3]
-    orders = [base_order, list(reversed(base_order))]
-    rng = random.Random(0)
-    while len(orders) < args.k:
-        p = base_order[:]
-        rng.shuffle(p)
-        if p not in orders:
-            orders.append(p)
+    # enumerate ALL orderings of the actual evidence lines (3 lines -> 6)
+    n_lines = len(evidence_block(city, samples[0], engine, drop=drop).split("\n"))
+    all_perms = [list(x) for x in permutations(range(n_lines))]
+    orders = all_perms if args.k >= len(all_perms) else all_perms[: args.k]
+    print(f"evidence lines: {n_lines} -> {len(orders)} orderings", flush=True)
 
     def one(i):
         s = samples[i]
         prof = render_profile(store, s.user)
-        lines = evidence_block(city, s, engine).split("\n")
+        lines = evidence_block(city, s, engine, drop=drop).split("\n")
         lists = []
         for perm in orders:
             prompt = build_prompt(city, s, engine, prof, [lines[j] for j in perm])
@@ -158,7 +159,7 @@ def main():
         ranks = []
         for i, lists in enumerate(res):
             import re
-            line = evidence_block(city, samples[i], engine).split("\n")[line_idx]
+            line = evidence_block(city, samples[i], engine, drop=drop).split("\n")[line_idx]
             ids = [int(x) for x in re.findall(r"(\d+) \(", line)]
             if not ids:
                 continue
@@ -168,8 +169,8 @@ def main():
                         ranks.append(lst.index(pid))
         return float(np.mean(ranks)) if ranks else float("nan")
 
-    r0, r3 = avg_rank_of_line(0), avg_rank_of_line(3)
-    print(f"\n[3] 输出中的平均名次：第 1 行证据的 POI = {r0:.2f}，第 4 行证据的 POI = {r3:.2f}")
+    r0, r3 = avg_rank_of_line(0), avg_rank_of_line(n_lines - 1)
+    print(f"\n[3] 输出中的平均名次：第 1 行证据的 POI = {r0:.2f}，第 {n_lines} 行证据的 POI = {r3:.2f}")
     print("    （若前者明显更小，说明模型偏好排在前面的证据——即位置偏置）")
 
     dump = ROOT / "results" / "dump" / f"order_sensitivity_{args.city}_{args.n}.jsonl"
@@ -184,7 +185,7 @@ def main():
         "mean_jaccard": float(np.mean(jac)),
         "per_order_hr10": [float(x) for x in per_order],
         "ensemble_hr10": float(hr10(ens, samples)),
-        "rank_line0": r0, "rank_line3": r3,
+        "rank_line0": r0, "rank_last": r3, "n_lines": n_lines,
         "calls": client.usage.calls,
         "cost": client.usage.cost_usd,
     }, indent=2))
